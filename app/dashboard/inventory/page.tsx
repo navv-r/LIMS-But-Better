@@ -17,6 +17,10 @@ interface Sample {
   ethnicity: string | null;
   age: string | null;
   consumed_at: string | null;
+  parent_sample_id: string | null;
+  parent_sample_id_2: string | null;
+  parent_alias: string | null;
+  parent_alias_2: string | null;
   species: { name: string };
   matrix: { name: string };
   quantity_ml: number;
@@ -82,13 +86,23 @@ export default function InventoryPage() {
       .from("samples")
       .select(`
         id, alias_id, vendor_sample_id, gender, race, ethnicity, age, consumed_at, quantity_ml, collection_date, created_at,
+        parent_sample_id, parent_sample_id_2,
+        parent:samples!parent_sample_id(alias_id),
+        parent2:samples!parent_sample_id_2(alias_id),
         species:species_id(name),
         matrix:matrix_id(name),
         storage_temp:storage_temp_id(label, description),
         collection_site:collection_site_id(name, abbreviation)
       `)
       .order("created_at", { ascending: false });
-    if (data) setSamples(data as unknown as Sample[]);
+    if (data) {
+      const mapped = data.map((s: any) => ({
+        ...s,
+        parent_alias: (s.parent as { alias_id: string } | null)?.alias_id ?? null,
+        parent_alias_2: (s.parent2 as { alias_id: string } | null)?.alias_id ?? null,
+      }));
+      setSamples(mapped as unknown as Sample[]);
+    }
   }
 
   const selectedSpeciesName = species.find(s => String(s.id) === form.species_id)?.name ?? "";
@@ -176,6 +190,14 @@ export default function InventoryPage() {
   const allFilled = Object.values(coreRequired).every(v => v !== "") && humanFieldsFilled;
 
   const displayed = samples.filter(s => showConsumed ? true : !s.consumed_at);
+
+  const sampleMap = new Map<string, Sample>(samples.map(s => [s.id, s]));
+
+  const childCounts: Record<string, number> = {};
+  samples.forEach(s => {
+    if (s.parent_sample_id) childCounts[s.parent_sample_id] = (childCounts[s.parent_sample_id] ?? 0) + 1;
+    if (s.parent_sample_id_2) childCounts[s.parent_sample_id_2] = (childCounts[s.parent_sample_id_2] ?? 0) + 1;
+  });
 
   return (
     <div className="flex flex-col min-h-screen font-sans">
@@ -397,7 +419,7 @@ export default function InventoryPage() {
               <table className="w-full text-sm text-left">
                 <thead>
                   <tr style={{ borderBottom: "1px solid rgba(74,124,247,0.1)" }}>
-                    {["Alias ID","Vendor ID","Species","Gender","Race","Ethnicity","Age","Matrix","Qty (mL)","Coll. Date","Storage","Site","Status"].map(h => (
+                    {["Alias ID","Vendor ID","Lineage","Species","Gender","Race","Ethnicity","Age","Matrix","Qty (mL)","Coll. Date","Storage","Site","Status"].map(h => (
                       <th key={h} className="table-header-cell">{h}</th>
                     ))}
                   </tr>
@@ -410,6 +432,47 @@ export default function InventoryPage() {
                       </td>
                       <td className="table-cell font-mono text-xs">
                         {s.vendor_sample_id ?? <span style={{ color: "#3d5270" }}>—</span>}
+                      </td>
+                      <td className="table-cell">
+                        {(() => {
+                          // Lot: has two parents
+                          if (s.parent_alias && s.parent_alias_2) {
+                            return (
+                              <span className="font-mono text-xs font-semibold" style={{ color: "#f59e0b" }}>
+                                ↑ {s.parent_alias} + {s.parent_alias_2}
+                              </span>
+                            );
+                          }
+                          // Aliquot: has one direct parent
+                          if (s.parent_alias && s.parent_sample_id) {
+                            const parent = sampleMap.get(s.parent_sample_id);
+                            if (parent?.parent_alias && parent?.parent_alias_2) {
+                              // Parent is a lot — show: ↑ lot_alias (from p1 + p2)
+                              return (
+                                <span className="flex flex-col gap-0.5">
+                                  <span className="font-mono text-xs font-semibold" style={{ color: "#a78bfa" }}>↑ {s.parent_alias}</span>
+                                  <span className="text-xs" style={{ color: "#3d5270" }}>
+                                    lot: {parent.parent_alias} + {parent.parent_alias_2}
+                                  </span>
+                                </span>
+                              );
+                            }
+                            return (
+                              <span className="font-mono text-xs font-semibold" style={{ color: "#a78bfa" }}>
+                                ↑ {s.parent_alias}
+                              </span>
+                            );
+                          }
+                          // Parent sample
+                          if (childCounts[s.id]) {
+                            return (
+                              <span className="inline-flex items-center gap-1 text-xs font-semibold" style={{ color: "#7d9abd" }}>
+                                ↓ {childCounts[s.id]} child{childCounts[s.id] !== 1 ? "ren" : ""}
+                              </span>
+                            );
+                          }
+                          return <span style={{ color: "#3d5270" }}>—</span>;
+                        })()}
                       </td>
                       <td className="table-cell">{s.species?.name}</td>
                       <td className="table-cell">{s.gender ?? <span style={{ color: "#3d5270" }}>—</span>}</td>
