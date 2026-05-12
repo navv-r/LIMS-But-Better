@@ -1,38 +1,193 @@
 @import "tailwindcss";
 
 :root {
-  --background: #eef1f6;
-  --foreground: #111827;
+  --bg-base:        #06101e;
+  --bg-elevated:    #0b1a33;
+  --bg-card:        rgba(10, 21, 42, 0.80);
+  --fg-primary:     #d8e8f7;
+  --fg-secondary:   #7d9abd;
+  --fg-muted:       #3d5270;
+  --cobalt:         #2456e0;
+  --cobalt-dark:    #1b40b8;
+  --cobalt-light:   #4a7cf7;
+  --cobalt-glow:    rgba(36, 86, 224, 0.30);
+  --border:         rgba(74, 124, 247, 0.13);
+  --border-focus:   rgba(74, 124, 247, 0.50);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-inter);
-  --font-mono: var(--font-mono);
-
-  --color-cobalt: #1a3faf;
-  --color-cobalt-dark: #142f88;
+  --color-background:    var(--bg-base);
+  --color-foreground:    var(--fg-primary);
+  --font-sans:           var(--font-space-grotesk);
+  --font-mono:           var(--font-jetbrains-mono);
+  --color-cobalt:        var(--cobalt);
+  --color-cobalt-dark:   var(--cobalt-dark);
+  --color-cobalt-light:  var(--cobalt-light);
 }
+
+*, *::before, *::after { box-sizing: border-box; }
 
 body {
-  background-color: var(--background);
-  background-image: radial-gradient(circle, #c8d3e8 1px, transparent 1px);
-  background-size: 28px 28px;
-  color: var(--foreground);
-  font-family: var(--font-inter), system-ui, sans-serif;
+  background-color: var(--bg-base);
+  background-image:
+    radial-gradient(ellipse 120% 70% at 50% -20%, rgba(36, 86, 224, 0.14) 0%, transparent 65%),
+    radial-gradient(circle, rgba(74, 124, 247, 0.045) 1px, transparent 1px);
+  background-size: 100%, 30px 30px;
+  min-height: 100vh;
+  color: var(--fg-primary);
+  font-family: var(--font-sans), system-ui, sans-serif;
 }
 
+/* ── Navigation ── */
+.nav-glass {
+  background: rgba(5, 12, 24, 0.90);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 1px 40px rgba(0, 0, 0, 0.7);
+}
+
+/* ── Cards ── */
+.card {
+  background: var(--bg-card);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  box-shadow:
+    0 8px 40px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+/* ── Inputs ── */
 .input-field {
-  @apply rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm text-gray-900 outline-none shadow-sm
-         focus:border-cobalt focus:ring-2 focus:ring-cobalt/10 transition-colors;
+  display: block;
+  width: 100%;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border);
+  background: rgba(5, 12, 26, 0.95);
+  padding: 0.55rem 0.875rem;
+  font-size: 0.875rem;
+  font-family: inherit;
+  color: var(--fg-primary);
+  outline: none;
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+.input-field::placeholder { color: var(--fg-muted); }
+.input-field:focus {
+  border-color: var(--cobalt-light);
+  box-shadow: 0 0 0 3px var(--cobalt-glow);
+}
+.input-field[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.5) sepia(1) saturate(2) hue-rotate(180deg);
+  cursor: pointer;
 }
 
 .select-field {
-  @apply rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm text-gray-900 outline-none shadow-sm
-         focus:border-cobalt focus:ring-2 focus:ring-cobalt/10 transition-colors;
+  display: block;
+  width: 100%;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border);
+  background: rgba(5, 12, 26, 0.95);
+  padding: 0.55rem 2.2rem 0.55rem 0.875rem;
+  font-size: 0.875rem;
+  font-family: inherit;
+  color: var(--fg-primary);
+  outline: none;
+  transition: border-color 0.18s, box-shadow 0.18s;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%234a617f' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+}
+.select-field:focus {
+  border-color: var(--cobalt-light);
+  box-shadow: 0 0 0 3px var(--cobalt-glow);
+}
+.select-field option {
+  background-color: #0b1a33;
+  color: var(--fg-primary);
 }
 
-.card {
-  @apply bg-white rounded-2xl border border-gray-200/80 shadow-sm;
+/* ── Primary Button ── */
+.btn-primary {
+  border-radius: 0.5rem;
+  background: linear-gradient(135deg, var(--cobalt) 0%, var(--cobalt-light) 100%);
+  padding: 0.6rem 1.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-family: inherit;
+  color: #fff;
+  letter-spacing: 0.02em;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 18px var(--cobalt-glow), inset 0 1px 0 rgba(255,255,255,0.15);
+  transition: box-shadow 0.2s, transform 0.15s;
+}
+.btn-primary:hover {
+  box-shadow: 0 4px 28px rgba(36, 86, 224, 0.55), inset 0 1px 0 rgba(255,255,255,0.15);
+  transform: translateY(-1px);
+}
+.btn-primary:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* ── Table ── */
+.table-header-cell {
+  padding-bottom: 0.75rem;
+  padding-right: 1rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--fg-muted);
+  white-space: nowrap;
+}
+.table-row {
+  border-bottom: 1px solid rgba(74, 124, 247, 0.07);
+  transition: background 0.15s;
+}
+.table-row:hover {
+  background: rgba(36, 86, 224, 0.05);
+}
+.table-row.consumed {
+  opacity: 0.4;
+}
+.table-cell {
+  padding: 0.7rem 1rem 0.7rem 0;
+  font-size: 0.8125rem;
+  color: var(--fg-secondary);
+  white-space: nowrap;
+}
+
+/* ── Status badge ── */
+.badge-active {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border-radius: 9999px;
+  padding: 0.2rem 0.7rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  background: rgba(16, 185, 129, 0.12);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+.badge-consumed {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border-radius: 9999px;
+  padding: 0.2rem 0.7rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  background: rgba(107, 114, 128, 0.12);
+  color: #6b7280;
+  border: 1px solid rgba(107, 114, 128, 0.2);
 }
