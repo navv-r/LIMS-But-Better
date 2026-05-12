@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ThemeToggle } from "@/app/components/ThemeToggle";
 
 const departments = [
   {
@@ -68,28 +69,32 @@ export default function Dashboard() {
       {/* Nav */}
       <nav className="nav-glass w-full px-8 py-4 flex items-center justify-between sticky top-0 z-50">
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "linear-gradient(135deg, #2456e0, #4a7cf7)" }}>
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "linear-gradient(135deg, var(--cobalt), var(--cobalt-light))" }}>
             <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
             </svg>
           </div>
-          <span className="text-white text-lg font-semibold tracking-tight">LIMS But Better</span>
+          <span className="text-lg font-semibold tracking-tight" style={{ color: "var(--fg-primary)" }}>LIMS But Better</span>
         </div>
-        <Link href="/" className="flex items-center gap-1.5 text-xs font-medium tracking-wide uppercase transition-colors" style={{ color: "#4a617f" }}
-          onMouseEnter={e => (e.currentTarget.style.color = "#7d9abd")}
-          onMouseLeave={e => (e.currentTarget.style.color = "#4a617f")}>
-          Sign out
-        </Link>
+        <div className="flex items-center gap-3">
+          <ThemeToggle />
+          <Link href="/" className="flex items-center gap-1.5 text-xs font-medium tracking-wide uppercase transition-colors"
+            style={{ color: "var(--fg-tertiary)" }}
+            onMouseEnter={e => (e.currentTarget.style.color = "var(--fg-secondary)")}
+            onMouseLeave={e => (e.currentTarget.style.color = "var(--fg-tertiary)")}>
+            Sign out
+          </Link>
+        </div>
       </nav>
 
       <main className="flex flex-1 flex-col items-center justify-center px-4 py-14">
         <div className="w-full max-w-2xl">
           {/* Title */}
           <div className="mb-10">
-            <p className="text-xs font-semibold tracking-widest uppercase mb-2" style={{ color: "#4a617f" }}>
+            <p className="text-xs font-semibold tracking-widest uppercase mb-2" style={{ color: "var(--fg-tertiary)" }}>
               Dashboard
             </p>
-            <h1 className="text-3xl font-bold tracking-tight" style={{ color: "#d8e8f7" }}>
+            <h1 className="text-3xl font-bold tracking-tight" style={{ color: "var(--fg-primary)" }}>
               Select a Module
             </h1>
             <div className="mt-3 h-px w-16" style={{ background: "linear-gradient(to right, #2456e0, transparent)" }} />
@@ -121,10 +126,10 @@ export default function Dashboard() {
                   {dept.icon}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h2 className="text-sm font-semibold mb-1 tracking-tight" style={{ color: "#d8e8f7" }}>{dept.name}</h2>
-                  <p className="text-xs leading-relaxed" style={{ color: "#4a617f" }}>{dept.description}</p>
+                  <h2 className="text-sm font-semibold mb-1 tracking-tight" style={{ color: "var(--fg-primary)" }}>{dept.name}</h2>
+                  <p className="text-xs leading-relaxed" style={{ color: "var(--fg-tertiary)" }}>{dept.description}</p>
                 </div>
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 flex-shrink-0 mt-0.5 transition-transform group-hover:translate-x-0.5" style={{ color: "#3d5270" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 flex-shrink-0 mt-0.5 transition-transform group-hover:translate-x-0.5" style={{ color: "var(--fg-muted)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                 </svg>
               </Link>
