@@ -13,6 +13,9 @@ interface Sample {
   alias_id: string;
   vendor_sample_id: string | null;
   gender: string | null;
+  race: string | null;
+  ethnicity: string | null;
+  age: string | null;
   consumed_at: string | null;
   species: { name: string };
   matrix: { name: string };
@@ -23,7 +26,25 @@ interface Sample {
   created_at: string;
 }
 
-const empty = { species_id: "", matrix_id: "", quantity_ml: "", collection_date: "", storage_temp_id: "", collection_site_id: "", vendor_sample_id: "", gender: "" };
+const RACE_OPTIONS = [
+  "American Indian or Alaska Native",
+  "Asian",
+  "Black or African American",
+  "Native Hawaiian or Other Pacific Islander",
+  "White",
+  "Multiracial",
+  "Other",
+  "Unknown / Not Reported",
+];
+
+const ETHNICITY_OPTIONS = [
+  "Hispanic or Latino",
+  "Not Hispanic or Latino",
+  "Unknown / Not Reported",
+];
+
+
+const empty = { species_id: "", matrix_id: "", quantity_ml: "", collection_date: "", storage_temp_id: "", collection_site_id: "", vendor_sample_id: "", gender: "", race: "", ethnicity: "", age: "" };
 
 export default function InventoryPage() {
   const [species, setSpecies] = useState<Species[]>([]);
@@ -61,7 +82,7 @@ export default function InventoryPage() {
     const { data } = await supabase
       .from("samples")
       .select(`
-        id, alias_id, vendor_sample_id, gender, consumed_at, quantity_ml, collection_date, created_at,
+        id, alias_id, vendor_sample_id, gender, race, ethnicity, age, consumed_at, quantity_ml, collection_date, created_at,
         species:species_id(name),
         matrix:matrix_id(name),
         storage_temp:storage_temp_id(label, description),
@@ -71,8 +92,23 @@ export default function InventoryPage() {
     if (data) setSamples(data as unknown as Sample[]);
   }
 
+  const selectedSpeciesName = species.find(s => String(s.id) === form.species_id)?.name ?? "";
+  const isHuman = selectedSpeciesName.toLowerCase() === "human";
+
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
-    setForm(f => ({ ...f, [e.target.name]: e.target.value }));
+    const { name, value } = e.target;
+    setForm(f => {
+      const next = { ...f, [name]: value };
+      if (name === "species_id") {
+        const newSpeciesName = species.find(s => String(s.id) === value)?.name ?? "";
+        if (newSpeciesName.toLowerCase() !== "human") {
+          next.race = "";
+          next.ethnicity = "";
+          next.age = "";
+        }
+      }
+      return next;
+    });
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -90,6 +126,9 @@ export default function InventoryPage() {
       collection_site_id: Number(form.collection_site_id),
       vendor_sample_id: form.vendor_sample_id || null,
       gender: form.gender,
+      race: isHuman ? form.race || null : null,
+      ethnicity: isHuman ? form.ethnicity || null : null,
+      age: isHuman ? form.age || null : null,
     });
 
     setSubmitting(false);
@@ -133,8 +172,9 @@ export default function InventoryPage() {
     }
   }
 
-  const { vendor_sample_id: _v, ...requiredFields } = form;  // vendor_sample_id is optional
-  const allFilled = Object.values(requiredFields).every(v => v !== "");
+  const { vendor_sample_id: _v, race: _r, ethnicity: _e, age: _a, ...coreRequired } = form;
+  const humanFieldsFilled = !isHuman || (form.race !== "" && form.ethnicity !== "" && form.age !== "");
+  const allFilled = Object.values(coreRequired).every(v => v !== "") && humanFieldsFilled;
 
   const displayed = samples.filter(s => showConsumed ? true : !s.consumed_at);
 
@@ -215,6 +255,35 @@ export default function InventoryPage() {
               </select>
             </div>
 
+            {isHuman && (
+              <>
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm font-medium text-gray-600">Race</label>
+                  <select name="race" value={form.race} onChange={handleChange} className="select-field">
+                    <option value="">Select race</option>
+                    {RACE_OPTIONS.map(r => <option key={r} value={r}>{r}</option>)}
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm font-medium text-gray-600">Ethnicity</label>
+                  <select name="ethnicity" value={form.ethnicity} onChange={handleChange} className="select-field">
+                    <option value="">Select ethnicity</option>
+                    {ETHNICITY_OPTIONS.map(e => <option key={e} value={e}>{e}</option>)}
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm font-medium text-gray-600">Age</label>
+                  <input
+                    type="number" name="age" value={form.age} onChange={handleChange}
+                    placeholder="e.g. 34" min="0" max="130" step="1"
+                    className="input-field"
+                  />
+                </div>
+              </>
+            )}
+
             <div className="flex flex-col gap-1">
               <label className="text-sm font-medium text-gray-600">Vendor / Collection Site ID <span className="text-gray-400 font-normal">(optional)</span></label>
               <input
@@ -265,6 +334,9 @@ export default function InventoryPage() {
                     <th className="pb-3 pr-4">Vendor ID</th>
                     <th className="pb-3 pr-4">Species</th>
                     <th className="pb-3 pr-4">Gender</th>
+                    <th className="pb-3 pr-4">Race</th>
+                    <th className="pb-3 pr-4">Ethnicity</th>
+                    <th className="pb-3 pr-4">Age</th>
                     <th className="pb-3 pr-4">Matrix</th>
                     <th className="pb-3 pr-4">Qty (mL)</th>
                     <th className="pb-3 pr-4">Collection Date</th>
@@ -280,6 +352,9 @@ export default function InventoryPage() {
                       <td className="py-3 pr-4 font-mono text-gray-700">{s.vendor_sample_id ?? <span className="text-gray-300">—</span>}</td>
                       <td className="py-3 pr-4 text-gray-700">{s.species?.name}</td>
                       <td className="py-3 pr-4 text-gray-700">{s.gender ?? <span className="text-gray-300">—</span>}</td>
+                      <td className="py-3 pr-4 text-gray-700">{s.race ?? <span className="text-gray-300">—</span>}</td>
+                      <td className="py-3 pr-4 text-gray-700">{s.ethnicity ?? <span className="text-gray-300">—</span>}</td>
+                      <td className="py-3 pr-4 text-gray-700">{s.age ?? <span className="text-gray-300">—</span>}</td>
                       <td className="py-3 pr-4 text-gray-700">{s.matrix?.name}</td>
                       <td className="py-3 pr-4 text-gray-700">{s.quantity_ml}</td>
                       <td className="py-3 pr-4 text-gray-700">{s.collection_date}</td>
