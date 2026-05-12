@@ -359,7 +359,7 @@ export default function InventoryPage() {
                       <td className="py-3 pr-4 text-gray-700">{s.quantity_ml}</td>
                       <td className="py-3 pr-4 text-gray-700">{s.collection_date}</td>
                       <td className="py-3 pr-4 text-gray-700">{s.storage_temp?.label} <span className="text-gray-400 text-xs">({s.storage_temp?.description})</span></td>
-                      <td className="py-3 pr-4 text-gray-700">{s.collection_site?.name} <span className="text-gray-400 text-xs">({s.collection_site?.abbreviation})</span></td>
+                      <td className="py-3 pr-4 text-gray-700">{s.collection_site?.abbreviation}</td>
                       <td className="py-3">
                         {s.consumed_at ? (
                           <span className="text-xs text-gray-400 italic">Consumed</span>
