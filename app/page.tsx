@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { ThemeToggle } from "@/app/components/ThemeToggle";
 
 export default function Home() {
   const router = useRouter();
@@ -13,7 +14,7 @@ export default function Home() {
   return (
     <div className="flex flex-col min-h-screen font-sans">
       {/* Nav */}
-      <nav className="nav-glass w-full px-8 py-4 flex items-center">
+      <nav className="nav-glass w-full px-8 py-4 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "linear-gradient(135deg, #2456e0, #4a7cf7)" }}>
             <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -22,6 +23,7 @@ export default function Home() {
           </div>
           <span className="text-white text-lg font-semibold tracking-tight">LIMS But Better</span>
         </div>
+        <ThemeToggle />
       </nav>
 
       {/* Centered glow behind card */}
