@@ -4,6 +4,8 @@ import { createContext, useContext, useEffect, useState, useCallback } from "rea
 
 type Theme = "dark" | "light";
 
+const THEME_TRANSITION_MS = 520;
+
 const ThemeContext = createContext<{
   theme: Theme;
   toggleTheme: () => void;
@@ -21,7 +23,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   const toggleTheme = useCallback(() => {
     document.documentElement.classList.add("theme-transitioning");
-    setTimeout(() => document.documentElement.classList.remove("theme-transitioning"), 520);
+    setTimeout(() => document.documentElement.classList.remove("theme-transitioning"), THEME_TRANSITION_MS);
     setTheme(prev => {
       const next = prev === "dark" ? "light" : "dark";
       document.documentElement.setAttribute("data-theme", next);

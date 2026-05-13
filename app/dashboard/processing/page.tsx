@@ -35,6 +35,9 @@ interface Sample {
 
 type Mode = "none" | "aliquot" | "lot";
 
+const ghostBtn = "text-xs font-medium px-3 py-1.5 rounded-lg transition-colors";
+const ghostStyle = { color: "#4a617f", background: "rgba(74,124,247,0.07)", border: "1px solid rgba(74,124,247,0.13)" };
+
 function VolumeGauge({ used, total, label }: { used: number; total: number; label: string }) {
   const pct = total > 0 ? Math.min((used / total) * 100, 100) : 0;
   const over = used > total;
@@ -153,9 +156,10 @@ export default function ProcessingPage() {
   }
 
   async function doSearch(opts?: { overrideQuery?: string }) {
-    const q = opts?.overrideQuery !== undefined ? opts.overrideQuery : searchQuery.trim();
-    if (opts?.overrideQuery !== undefined) {
-      setSearchQuery(opts.overrideQuery);
+    const isOverride = opts?.overrideQuery !== undefined;
+    const q = opts?.overrideQuery ?? searchQuery.trim();
+    if (isOverride) {
+      setSearchQuery(q);
       setFilterSpecies(""); setFilterMatrix("");
     }
 
@@ -180,10 +184,9 @@ export default function ProcessingPage() {
       `)
       .is("consumed_at", null);
 
-    const searching = opts?.overrideQuery !== undefined ? q.length > 0 : isSearchMode;
-    if (searching && q.length > 0) {
+    if (q.length > 0) {
       query = query.or(`alias_id.ilike.%${q}%,vendor_sample_id.ilike.%${q}%`);
-    } else if (opts?.overrideQuery === undefined) {
+    } else if (!isOverride) {
       if (filterSpecies) query = query.eq("species_id", Number(filterSpecies));
       if (filterMatrix) query = query.eq("matrix_id", Number(filterMatrix));
     }
@@ -294,10 +297,6 @@ export default function ProcessingPage() {
       });
     }
   }
-
-  // ── Shared UI helpers ──────────────────────────────────────────────────────
-  const ghostBtn = "text-xs font-medium px-3 py-1.5 rounded-lg transition-colors";
-  const ghostStyle = { color: "#4a617f", background: "rgba(74,124,247,0.07)", border: "1px solid rgba(74,124,247,0.13)" };
 
   return (
     <div className="flex flex-col flex-1 font-sans">

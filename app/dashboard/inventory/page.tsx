@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, ChangeEvent, FormEvent, ReactNode } from "react";
 import { supabase } from "@/lib/supabase";
 
 interface Species { id: number; name: string; }
@@ -49,6 +49,17 @@ const empty = {
   gender: "", race: "", ethnicity: "", age: "",
 };
 
+const ghostBtn = "text-xs font-medium px-3 py-1 rounded-lg transition-all";
+
+function DetailRow({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--fg-muted)" }}>{label}</span>
+      <span className="text-sm" style={{ color: "var(--fg-primary)" }}>{value ?? <span style={{ color: "var(--fg-muted)" }}>—</span>}</span>
+    </div>
+  );
+}
+
 /* ── History Modal ─────────────────────────────────────────── */
 function HistoryModal({
   sample, onClose, allSamples, historyLog, loading,
@@ -79,15 +90,6 @@ function HistoryModal({
     aliquoted: "#a78bfa",
     lot_created: "#f59e0b",
   };
-
-  function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
-    return (
-      <div className="flex flex-col gap-0.5">
-        <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--fg-muted)" }}>{label}</span>
-        <span className="text-sm" style={{ color: "var(--fg-primary)" }}>{value ?? <span style={{ color: "var(--fg-muted)" }}>—</span>}</span>
-      </div>
-    );
-  }
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -362,7 +364,7 @@ export default function InventoryPage() {
   const selectedSpeciesName = species.find(s => String(s.id) === form.species_id)?.name ?? "";
   const isHuman = selectedSpeciesName.toLowerCase() === "human";
 
-  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
+  function handleChange(e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
     const { name, value } = e.target;
     setForm(f => {
       const next = { ...f, [name]: value };
@@ -374,7 +376,7 @@ export default function InventoryPage() {
     });
   }
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setSubmitting(true); setError(null); setSuccess(false);
     const { error } = await supabase.from("samples").insert({
@@ -434,8 +436,6 @@ export default function InventoryPage() {
   }
   function selectAll() { setSelectedIds(new Set(activeDisplayed.map(s => s.id))); }
   function unselectAll() { setSelectedIds(new Set()); setConfirmBulkConsume(false); }
-
-  const ghostBtn = "text-xs font-medium px-3 py-1 rounded-lg transition-all";
 
   return (
     <div className="flex flex-col flex-1 font-sans">

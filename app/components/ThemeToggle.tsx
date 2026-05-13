@@ -1,15 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTheme } from "@/app/providers/ThemeProvider";
 
 export function ThemeToggle() {
   const { theme, toggleTheme } = useTheme();
   const [spinning, setSpinning] = useState(false);
 
+  useEffect(() => {
+    if (!spinning) return;
+    const id = setTimeout(() => setSpinning(false), 600);
+    return () => clearTimeout(id);
+  }, [spinning]);
+
   function handleToggle() {
     setSpinning(true);
-    setTimeout(() => setSpinning(false), 600);
     toggleTheme();
   }
 

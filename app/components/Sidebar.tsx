@@ -111,7 +111,7 @@ export function Sidebar() {
             <Link
               key={item.name}
               href={item.href}
-              className="flex items-center gap-3 px-3 py-2 rounded-lg transition-all"
+              className="flex items-center gap-3 px-3 py-2 rounded-lg transition-all relative"
               style={{
                 color: active ? "var(--cobalt-light)" : "var(--fg-secondary)",
                 background: active ? "rgba(74,124,247,0.12)" : "transparent",
