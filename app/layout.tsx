@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Space_Grotesk, JetBrains_Mono } from "next/font/google";
 import { ThemeProvider } from "@/app/providers/ThemeProvider";
+import { NavigationProvider } from "@/app/providers/NavigationProvider";
 import "./globals.css";
 
 const spaceGrotesk = Space_Grotesk({
@@ -35,7 +36,9 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: `(function(){var t=localStorage.getItem('lims-theme');document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');})();` }} />
       </head>
       <body className="min-h-full flex flex-col">
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <NavigationProvider>{children}</NavigationProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

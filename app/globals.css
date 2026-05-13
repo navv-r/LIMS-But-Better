@@ -133,6 +133,53 @@ html.theme-transitioning body::after {
   animation: icon-flip 0.55s ease-in-out forwards;
 }
 
+/* ── Page transition loader ── */
+@keyframes loader-overlay-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes lab-tube-tilt {
+  0%         { transform: rotate(10deg); }
+  17%        { transform: rotate(-110deg); }
+  67%        { transform: rotate(-110deg); }
+  83%        { transform: rotate(10deg); }
+  100%       { transform: rotate(10deg); }
+}
+@keyframes lab-stream-fade {
+  0%, 14%   { opacity: 0; }
+  22%       { opacity: 1; }
+  64%       { opacity: 1; }
+  76%       { opacity: 0; }
+  100%      { opacity: 0; }
+}
+@keyframes lab-drop-a {
+  0%, 18%  { transform: translateY(0px); opacity: 0; }
+  24%      { opacity: 1; }
+  55%      { transform: translateY(32px); opacity: 0; }
+  100%     { opacity: 0; }
+}
+@keyframes lab-drop-b {
+  0%, 28%  { transform: translateY(0px); opacity: 0; }
+  35%      { opacity: 1; }
+  62%      { transform: translateY(28px); opacity: 0; }
+  100%     { opacity: 0; }
+}
+@keyframes lab-drop-c {
+  0%, 40%  { transform: translateY(0px); opacity: 0; }
+  46%      { opacity: 1; }
+  70%      { transform: translateY(26px); opacity: 0; }
+  100%     { opacity: 0; }
+}
+@keyframes lab-beaker-fill {
+  0%, 18%  { transform: scaleY(0); }
+  78%      { transform: scaleY(1); }
+  100%     { transform: scaleY(1); }
+}
+@keyframes lab-text-pulse {
+  0%, 100% { opacity: 0.45; }
+  50%      { opacity: 1; }
+}
+
 /* ── Navigation ── */
 .nav-glass {
   background: var(--nav-bg);

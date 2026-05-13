@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ThemeToggle } from "@/app/components/ThemeToggle";
+import { useNavigate } from "@/app/providers/NavigationProvider";
 
 const navItems = [
   {
@@ -58,6 +58,7 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { navigate } = useNavigate();
 
   function isActive(item: { href: string; exact?: boolean }) {
     return item.exact ? pathname === item.href : pathname.startsWith(item.href);
@@ -108,14 +109,16 @@ export function Sidebar() {
               </span>
             </div>
           ) : (
-            <Link
+            <button
               key={item.name}
-              href={item.href}
-              className="flex items-center gap-3 px-3 py-2 rounded-lg transition-all relative"
+              onClick={() => navigate(item.href)}
+              className="flex items-center gap-3 px-3 py-2 rounded-lg transition-all relative w-full text-left"
               style={{
                 color: active ? "var(--cobalt-light)" : "var(--fg-secondary)",
                 background: active ? "rgba(74,124,247,0.12)" : "transparent",
                 fontWeight: active ? 600 : 400,
+                border: "none",
+                cursor: "pointer",
               }}
               onMouseEnter={e => {
                 if (!active) {
@@ -138,7 +141,7 @@ export function Sidebar() {
               )}
               {item.icon}
               <span className="text-sm">{item.name}</span>
-            </Link>
+            </button>
           );
         })}
       </nav>
@@ -149,10 +152,10 @@ export function Sidebar() {
           <span className="text-xs font-medium" style={{ color: "var(--fg-muted)" }}>Theme</span>
           <ThemeToggle />
         </div>
-        <Link
-          href="/"
-          className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all"
-          style={{ color: "var(--fg-muted)" }}
+        <button
+          onClick={() => navigate("/")}
+          className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all w-full text-left"
+          style={{ color: "var(--fg-muted)", border: "none", cursor: "pointer", background: "transparent" }}
           onMouseEnter={e => {
             (e.currentTarget as HTMLElement).style.color = "var(--fg-secondary)";
             (e.currentTarget as HTMLElement).style.background = "rgba(74,124,247,0.06)";
@@ -166,7 +169,7 @@ export function Sidebar() {
             <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
           </svg>
           Sign out
-        </Link>
+        </button>
       </div>
     </aside>
   );
