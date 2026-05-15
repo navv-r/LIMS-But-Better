@@ -374,18 +374,21 @@ export default function ProcessingPage() {
     const ops: Promise<any>[] = [];
     if (toAdd.length > 0) {
       ops.push(
-        supabase.from("sample_procedures").upsert(
-          toAdd.map(p => ({ sample_id: selected.id, procedure_name: p })),
-          { onConflict: "sample_id,procedure_name" }
-        ).then(r => r)
+        Promise.resolve(
+          supabase.from("sample_procedures").upsert(
+            toAdd.map(p => ({ sample_id: selected.id, procedure_name: p })),
+            { onConflict: "sample_id,procedure_name" }
+          )
+        )
       );
     }
     if (toRemove.length > 0) {
       ops.push(
-        supabase.from("sample_procedures").delete()
-          .eq("sample_id", selected.id)
-          .in("procedure_name", toRemove)
-          .then(r => r)
+        Promise.resolve(
+          supabase.from("sample_procedures").delete()
+            .eq("sample_id", selected.id)
+            .in("procedure_name", toRemove)
+        )
       );
     }
 
