@@ -34,6 +34,26 @@ interface Sample {
 }
 
 type Mode = "none" | "aliquot" | "lot";
+type ActionTab = "aliquot" | "procedures";
+
+const PROCEDURES = [
+  "Filtered 0.2µm",
+  "Filtered 0.1µm",
+  "Filtered 0.45µm",
+  "Filtered 0.8µm",
+  "Charcoal Stripped 1x",
+  "Charcoal Stripped 2x",
+  "Charcoal Stripped 4x",
+  "Charcoal Stripped 8x",
+  "Delipidized",
+  "Heat Inactivated",
+  "Ultrafiltered 10kDa",
+  "Ultrafiltered 30kDa",
+  "Hemolyzed",
+  "Hemolyzed 2%",
+  "Hemolyzed 5%",
+  "Hemolyzed 10%",
+];
 
 const ghostBtn = "text-xs font-medium px-3 py-1.5 rounded-lg transition-colors";
 const ghostStyle = { color: "#4a617f", background: "rgba(74,124,247,0.07)", border: "1px solid rgba(74,124,247,0.13)" };
@@ -85,14 +105,17 @@ export default function ProcessingPage() {
   // Up to 2 selections; index 0 = "1st", index 1 = "2nd"
   const [selections, setSelections] = useState<Sample[]>([]);
 
-  // Aliquot state (mode === "aliquot")
+  // Tab for single-sample action panel
+  const [activeTab, setActiveTab] = useState<ActionTab>("aliquot");
+
+  // Aliquot state
   const [numAliquots, setNumAliquots] = useState("");
   const [aliquotVol, setAliquotVol] = useState("");
   const [aliquotError, setAliquotError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [newAliquotIds, setNewAliquotIds] = useState<string[] | null>(null);
 
-  // Lot state (mode === "lot")
+  // Lot state
   const [lotVol1, setLotVol1] = useState("");
   const [lotVol2, setLotVol2] = useState("");
   const [lotStorageTemp, setLotStorageTemp] = useState("");
@@ -100,6 +123,14 @@ export default function ProcessingPage() {
   const [lotCreating, setLotCreating] = useState(false);
   const [newLotAlias, setNewLotAlias] = useState<string | null>(null);
   const [newLotParents, setNewLotParents] = useState<[string, string] | null>(null);
+
+  // Procedures state
+  const [savedProcedures, setSavedProcedures] = useState<string[]>([]);
+  const [draftProcedures, setDraftProcedures] = useState<string[]>([]);
+  const [proceduresLoading, setProceduresLoading] = useState(false);
+  const [proceduresSaving, setProceduresSaving] = useState(false);
+  const [proceduresSaved, setProceduresSaved] = useState(false);
+  const [proceduresError, setProceduresError] = useState<string | null>(null);
 
   const mode: Mode = selections.length === 2 ? "lot" : selections.length === 1 ? "aliquot" : "none";
   const selected = mode === "aliquot" ? selections[0] : null;
@@ -119,6 +150,28 @@ export default function ProcessingPage() {
     })();
   }, []);
 
+  // Load procedures when a sample is selected
+  useEffect(() => {
+    if (!selected) {
+      setSavedProcedures([]);
+      setDraftProcedures([]);
+      return;
+    }
+    setProceduresLoading(true);
+    setProceduresSaved(false);
+    setProceduresError(null);
+    (async () => {
+      const { data } = await supabase
+        .from("sample_procedures")
+        .select("procedure_name")
+        .eq("sample_id", selected.id);
+      const names = (data ?? []).map((r: any) => r.procedure_name as string);
+      setSavedProcedures(names);
+      setDraftProcedures(names);
+      setProceduresLoading(false);
+    })();
+  }, [selected?.id]);
+
   const isSearchMode = searchQuery.trim().length > 0;
   const isFilterMode = filterSpecies !== "" || filterMatrix !== "";
 
@@ -134,9 +187,11 @@ export default function ProcessingPage() {
   }
 
   function resetActionState() {
+    setActiveTab("aliquot");
     setNumAliquots(""); setAliquotVol(""); setAliquotError(null); setNewAliquotIds(null);
     setLotVol1(""); setLotVol2(""); setLotStorageTemp(""); setLotError(null);
     setNewLotAlias(null); setNewLotParents(null);
+    setProceduresSaved(false); setProceduresError(null);
   }
 
   function handleClear() {
@@ -151,7 +206,7 @@ export default function ProcessingPage() {
       const idx = prev.findIndex(p => p.id === s.id);
       if (idx >= 0) return prev.filter(p => p.id !== s.id);
       if (prev.length < 2) return [...prev, s];
-      return [prev[1], s]; // replace the oldest selection
+      return [prev[1], s];
     });
   }
 
@@ -298,6 +353,67 @@ export default function ProcessingPage() {
     }
   }
 
+  // ── Procedures logic ───────────────────────────────────────────────────────
+  const proceduresDirty = JSON.stringify([...draftProcedures].sort()) !== JSON.stringify([...savedProcedures].sort());
+
+  function toggleProcedure(proc: string) {
+    setProceduresSaved(false);
+    setDraftProcedures(prev =>
+      prev.includes(proc) ? prev.filter(p => p !== proc) : [...prev, proc]
+    );
+  }
+
+  async function saveProcedures() {
+    if (!selected) return;
+    setProceduresSaving(true);
+    setProceduresError(null);
+
+    const toAdd = draftProcedures.filter(p => !savedProcedures.includes(p));
+    const toRemove = savedProcedures.filter(p => !draftProcedures.includes(p));
+
+    const ops: Promise<any>[] = [];
+    if (toAdd.length > 0) {
+      ops.push(
+        supabase.from("sample_procedures").upsert(
+          toAdd.map(p => ({ sample_id: selected.id, procedure_name: p })),
+          { onConflict: "sample_id,procedure_name" }
+        )
+      );
+    }
+    if (toRemove.length > 0) {
+      ops.push(
+        supabase.from("sample_procedures").delete()
+          .eq("sample_id", selected.id)
+          .in("procedure_name", toRemove)
+      );
+    }
+
+    const results = await Promise.all(ops);
+    const firstError = results.find(r => r.error);
+
+    if (firstError) {
+      setProceduresError(firstError.error.message);
+      setProceduresSaving(false);
+      return;
+    }
+
+    setSavedProcedures(draftProcedures);
+    setProceduresSaved(true);
+    setProceduresSaving(false);
+
+    const changes: string[] = [];
+    if (toAdd.length > 0) changes.push(`Added: ${toAdd.join(", ")}`);
+    if (toRemove.length > 0) changes.push(`Removed: ${toRemove.join(", ")}`);
+    if (changes.length > 0) {
+      await supabase.from("history_log").insert({
+        event_type: "procedures_updated",
+        sample_id: selected.id,
+        alias_id: selected.alias_id,
+        notes: `Procedures updated for ${selected.alias_id}. ${changes.join(". ")}`,
+      });
+    }
+  }
+
   return (
     <div className="flex flex-col flex-1 font-sans">
 
@@ -420,7 +536,7 @@ export default function ProcessingPage() {
               )}
               {selections.length === 1 && (
                 <p className="text-xs px-3 py-1.5 rounded-lg" style={{ color: "#a78bfa", background: "rgba(124,58,237,0.08)", border: "1px solid rgba(167,139,250,0.2)" }}>
-                  1 selected — scroll down to aliquot, or select a 2nd to create a lot
+                  1 selected — scroll down to aliquot or set procedures, or select a 2nd to create a lot
                 </p>
               )}
               {selections.length === 2 && (
@@ -518,104 +634,266 @@ export default function ProcessingPage() {
           </section>
         )}
 
-        {/* ── Aliquot Panel (1 sample selected) ── */}
+        {/* ── Single-sample Action Panel (aliquot or procedures) ── */}
         {mode === "aliquot" && selected && !newAliquotIds && (
           <section className="w-full max-w-3xl card px-8 py-8" style={{ borderColor: "rgba(167,139,250,0.35)" }}>
-            <div className="flex items-center gap-3 mb-7">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "rgba(124,58,237,0.15)", color: "#a78bfa" }}>
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+
+            {/* Tab bar */}
+            <div className="flex gap-1 mb-7 p-1 rounded-xl w-fit" style={{ background: "rgba(5,12,26,0.6)", border: "1px solid rgba(74,124,247,0.1)" }}>
+              <button
+                onClick={() => setActiveTab("aliquot")}
+                className="flex items-center gap-2 text-xs font-semibold px-4 py-2 rounded-lg transition-all"
+                style={activeTab === "aliquot"
+                  ? { background: "rgba(124,58,237,0.25)", color: "#a78bfa", border: "1px solid rgba(167,139,250,0.3)" }
+                  : { color: "#4a617f", border: "1px solid transparent" }}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
                 </svg>
-              </div>
-              <div>
-                <p className="text-xs font-semibold tracking-widest uppercase" style={{ color: "#3d5270" }}>Aliquoting</p>
-                <h2 className="text-lg font-bold tracking-tight" style={{ color: "#d8e8f7" }}>Create Aliquots</h2>
-              </div>
-            </div>
-
-            {/* Parent summary */}
-            <div className="rounded-xl p-4 mb-6 flex flex-wrap gap-x-8 gap-y-3" style={{ background: "rgba(124,58,237,0.07)", border: "1px solid rgba(167,139,250,0.15)" }}>
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide mb-0.5" style={{ color: "#3d5270" }}>Parent Sample</p>
-                <p className="font-mono text-sm font-bold" style={{ color: "#a78bfa" }}>{selected.alias_id}</p>
-              </div>
-              {selected.vendor_sample_id && (
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide mb-0.5" style={{ color: "#3d5270" }}>Vendor ID</p>
-                  <p className="font-mono text-sm" style={{ color: "#7d9abd" }}>{selected.vendor_sample_id}</p>
-                </div>
-              )}
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide mb-0.5" style={{ color: "#3d5270" }}>Species</p>
-                <p className="text-sm" style={{ color: "#d8e8f7" }}>{selected.species?.name}</p>
-              </div>
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide mb-0.5" style={{ color: "#3d5270" }}>Matrix</p>
-                <p className="text-sm" style={{ color: "#d8e8f7" }}>{selected.matrix?.name}</p>
-              </div>
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide mb-0.5" style={{ color: "#3d5270" }}>Available</p>
-                <p className="text-sm font-bold font-mono" style={{ color: "#34d399" }}>{selected.quantity_ml} mL</p>
-              </div>
-              {/* Show lot parents if this sample is a lot */}
-              {selected.parent_alias && selected.parent_alias_2 && (
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide mb-0.5" style={{ color: "#3d5270" }}>Lot formed from</p>
-                  <p className="font-mono text-xs font-semibold" style={{ color: "#f59e0b" }}>
-                    {selected.parent_alias} + {selected.parent_alias_2}
-                  </p>
-                </div>
-              )}
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold tracking-wide uppercase" style={{ color: "#7d9abd" }}>Number of Aliquots</label>
-                <input type="number" value={numAliquots} onChange={e => { setNumAliquots(e.target.value); setAliquotError(null); }} placeholder="e.g. 4" min="1" step="1" className="input-field" />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold tracking-wide uppercase" style={{ color: "#7d9abd" }}>Volume per Aliquot (mL)</label>
-                <input type="number" value={aliquotVol} onChange={e => { setAliquotVol(e.target.value); setAliquotError(null); }} placeholder="e.g. 0.5" min="0.001" step="0.001" className="input-field" />
-              </div>
-            </div>
-
-            {n > 0 && vol > 0 && (
-              <div className="mb-5">
-                <VolumeGauge used={totalAliqVol} total={selected.quantity_ml} label="Total volume used" />
-              </div>
-            )}
-
-            {aliquotError && (
-              <p className="text-xs font-semibold mb-4 flex items-center gap-1.5" style={{ color: "#f87171" }}>
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-                {aliquotError}
-              </p>
-            )}
-
-            <div className="flex items-center gap-3 pt-2 border-t" style={{ borderColor: "rgba(74,124,247,0.1)" }}>
+                Aliquot
+              </button>
               <button
-                onClick={createAliquots}
-                disabled={!aliquotReady || creating}
-                className="btn-primary flex items-center gap-2"
-                style={{ background: "linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%)" }}
+                onClick={() => { setActiveTab("procedures"); setProceduresSaved(false); }}
+                className="flex items-center gap-2 text-xs font-semibold px-4 py-2 rounded-lg transition-all"
+                style={activeTab === "procedures"
+                  ? { background: "rgba(124,58,237,0.25)", color: "#a78bfa", border: "1px solid rgba(167,139,250,0.3)" }
+                  : { color: "#4a617f", border: "1px solid transparent" }}
               >
-                {creating ? (
-                  <>
-                    <svg className="animate-spin w-3.5 h-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                </svg>
+                Procedures
+                {savedProcedures.length > 0 && (
+                  <span className="text-xs font-bold px-1.5 py-0.5 rounded-md" style={{ background: "rgba(167,139,250,0.2)", color: "#a78bfa" }}>
+                    {savedProcedures.length}
+                  </span>
+                )}
+              </button>
+            </div>
+
+            {/* ── Aliquot tab content ── */}
+            {activeTab === "aliquot" && (
+              <>
+                <div className="flex items-center gap-3 mb-7">
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "rgba(124,58,237,0.15)", color: "#a78bfa" }}>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold tracking-widest uppercase" style={{ color: "#3d5270" }}>Aliquoting</p>
+                    <h2 className="text-lg font-bold tracking-tight" style={{ color: "#d8e8f7" }}>Create Aliquots</h2>
+                  </div>
+                </div>
+
+                {/* Parent summary */}
+                <div className="rounded-xl p-4 mb-6 flex flex-wrap gap-x-8 gap-y-3" style={{ background: "rgba(124,58,237,0.07)", border: "1px solid rgba(167,139,250,0.15)" }}>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide mb-0.5" style={{ color: "#3d5270" }}>Parent Sample</p>
+                    <p className="font-mono text-sm font-bold" style={{ color: "#a78bfa" }}>{selected.alias_id}</p>
+                  </div>
+                  {selected.vendor_sample_id && (
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide mb-0.5" style={{ color: "#3d5270" }}>Vendor ID</p>
+                      <p className="font-mono text-sm" style={{ color: "#7d9abd" }}>{selected.vendor_sample_id}</p>
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide mb-0.5" style={{ color: "#3d5270" }}>Species</p>
+                    <p className="text-sm" style={{ color: "#d8e8f7" }}>{selected.species?.name}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide mb-0.5" style={{ color: "#3d5270" }}>Matrix</p>
+                    <p className="text-sm" style={{ color: "#d8e8f7" }}>{selected.matrix?.name}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide mb-0.5" style={{ color: "#3d5270" }}>Available</p>
+                    <p className="text-sm font-bold font-mono" style={{ color: "#34d399" }}>{selected.quantity_ml} mL</p>
+                  </div>
+                  {selected.parent_alias && selected.parent_alias_2 && (
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide mb-0.5" style={{ color: "#3d5270" }}>Lot formed from</p>
+                      <p className="font-mono text-xs font-semibold" style={{ color: "#f59e0b" }}>
+                        {selected.parent_alias} + {selected.parent_alias_2}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold tracking-wide uppercase" style={{ color: "#7d9abd" }}>Number of Aliquots</label>
+                    <input type="number" value={numAliquots} onChange={e => { setNumAliquots(e.target.value); setAliquotError(null); }} placeholder="e.g. 4" min="1" step="1" className="input-field" />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold tracking-wide uppercase" style={{ color: "#7d9abd" }}>Volume per Aliquot (mL)</label>
+                    <input type="number" value={aliquotVol} onChange={e => { setAliquotVol(e.target.value); setAliquotError(null); }} placeholder="e.g. 0.5" min="0.001" step="0.001" className="input-field" />
+                  </div>
+                </div>
+
+                {n > 0 && vol > 0 && (
+                  <div className="mb-5">
+                    <VolumeGauge used={totalAliqVol} total={selected.quantity_ml} label="Total volume used" />
+                  </div>
+                )}
+
+                {aliquotError && (
+                  <p className="text-xs font-semibold mb-4 flex items-center gap-1.5" style={{ color: "#f87171" }}>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    {aliquotError}
+                  </p>
+                )}
+
+                <div className="flex items-center gap-3 pt-2 border-t" style={{ borderColor: "rgba(74,124,247,0.1)" }}>
+                  <button
+                    onClick={createAliquots}
+                    disabled={!aliquotReady || creating}
+                    className="btn-primary flex items-center gap-2"
+                    style={{ background: "linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%)" }}
+                  >
+                    {creating ? (
+                      <>
+                        <svg className="animate-spin w-3.5 h-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                        </svg>
+                        Creating…
+                      </>
+                    ) : n > 0 ? `Create ${n} Aliquot${n !== 1 ? "s" : ""}` : "Create Aliquots"}
+                  </button>
+                  <button onClick={() => setSelections([])} className={ghostBtn} style={ghostStyle}
+                    onMouseEnter={e => (e.currentTarget.style.color = "#7d9abd")} onMouseLeave={e => (e.currentTarget.style.color = "#4a617f")}>
+                    Cancel
+                  </button>
+                </div>
+              </>
+            )}
+
+            {/* ── Procedures tab content ── */}
+            {activeTab === "procedures" && (
+              <>
+                <div className="flex items-center gap-3 mb-7">
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "rgba(124,58,237,0.15)", color: "#a78bfa" }}>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold tracking-widest uppercase" style={{ color: "#3d5270" }}>Processing History</p>
+                    <h2 className="text-lg font-bold tracking-tight" style={{ color: "#d8e8f7" }}>
+                      Procedures — <span className="font-mono" style={{ color: "#a78bfa" }}>{selected.alias_id}</span>
+                    </h2>
+                  </div>
+                </div>
+
+                {proceduresLoading ? (
+                  <div className="flex items-center gap-2 py-8" style={{ color: "#3d5270" }}>
+                    <svg className="animate-spin w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
                     </svg>
-                    Creating…
+                    <span className="text-sm">Loading procedures…</span>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-xs mb-4" style={{ color: "#4a617f" }}>
+                      Toggle the procedures that have been applied to this sample. Changes are saved when you click Save.
+                    </p>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-6">
+                      {PROCEDURES.map(proc => {
+                        const isOn = draftProcedures.includes(proc);
+                        return (
+                          <button
+                            key={proc}
+                            onClick={() => toggleProcedure(proc)}
+                            className="text-xs font-medium px-3 py-2.5 rounded-lg text-left transition-all"
+                            style={isOn ? {
+                              background: "rgba(124,58,237,0.18)",
+                              color: "#a78bfa",
+                              border: "1px solid rgba(167,139,250,0.4)",
+                            } : {
+                              background: "rgba(5,12,26,0.5)",
+                              color: "#4a617f",
+                              border: "1px solid rgba(74,124,247,0.1)",
+                            }}
+                          >
+                            <span className="flex items-center gap-2">
+                              <span
+                                className="flex-shrink-0 w-3.5 h-3.5 rounded flex items-center justify-center"
+                                style={isOn
+                                  ? { background: "rgba(167,139,250,0.3)", border: "1px solid rgba(167,139,250,0.5)" }
+                                  : { background: "rgba(74,124,247,0.06)", border: "1px solid rgba(74,124,247,0.15)" }}
+                              >
+                                {isOn && (
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="#a78bfa" strokeWidth={3}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                  </svg>
+                                )}
+                              </span>
+                              {proc}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {proceduresError && (
+                      <p className="text-xs font-semibold mb-4 flex items-center gap-1.5" style={{ color: "#f87171" }}>
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        {proceduresError}
+                      </p>
+                    )}
+
+                    {proceduresSaved && (
+                      <p className="text-xs font-semibold mb-4 flex items-center gap-1.5" style={{ color: "#34d399" }}>
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                        Procedures saved successfully.
+                      </p>
+                    )}
+
+                    <div className="flex items-center gap-3 pt-2 border-t" style={{ borderColor: "rgba(74,124,247,0.1)" }}>
+                      <button
+                        onClick={saveProcedures}
+                        disabled={proceduresSaving || !proceduresDirty}
+                        className="btn-primary flex items-center gap-2"
+                        style={{ background: "linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%)", opacity: (!proceduresDirty && !proceduresSaving) ? 0.5 : 1 }}
+                      >
+                        {proceduresSaving ? (
+                          <>
+                            <svg className="animate-spin w-3.5 h-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                            </svg>
+                            Saving…
+                          </>
+                        ) : "Save Procedures"}
+                      </button>
+                      <button
+                        onClick={() => setDraftProcedures(savedProcedures)}
+                        disabled={!proceduresDirty}
+                        className={ghostBtn}
+                        style={{ ...ghostStyle, opacity: !proceduresDirty ? 0.4 : 1 }}
+                        onMouseEnter={e => (e.currentTarget.style.color = "#7d9abd")}
+                        onMouseLeave={e => (e.currentTarget.style.color = "#4a617f")}
+                      >
+                        Reset
+                      </button>
+                      <button onClick={() => setSelections([])} className={ghostBtn} style={ghostStyle}
+                        onMouseEnter={e => (e.currentTarget.style.color = "#7d9abd")} onMouseLeave={e => (e.currentTarget.style.color = "#4a617f")}>
+                        Deselect
+                      </button>
+                    </div>
                   </>
-                ) : n > 0 ? `Create ${n} Aliquot${n !== 1 ? "s" : ""}` : "Create Aliquots"}
-              </button>
-              <button onClick={() => setSelections([])} className={ghostBtn} style={ghostStyle}
-                onMouseEnter={e => (e.currentTarget.style.color = "#7d9abd")} onMouseLeave={e => (e.currentTarget.style.color = "#4a617f")}>
-                Cancel
-              </button>
-            </div>
+                )}
+              </>
+            )}
           </section>
         )}
 

@@ -138,45 +138,94 @@ html.theme-transitioning body::after {
   from { opacity: 0; }
   to   { opacity: 1; }
 }
+/* ── Tube tilts to pour, holds, returns, then repeats ── */
 @keyframes lab-tube-tilt {
   0%         { transform: rotate(10deg); }
-  17%        { transform: rotate(-110deg); }
-  67%        { transform: rotate(-110deg); }
-  83%        { transform: rotate(10deg); }
+  17%        { transform: rotate(-108deg); }
+  66%        { transform: rotate(-108deg); }
+  80%        { transform: rotate(10deg); }
   100%       { transform: rotate(10deg); }
 }
+/* ── Tube liquid fades out as it pours, refills on return ── */
+@keyframes lab-tube-drain {
+  0%, 14%    { opacity: 1; }
+  64%        { opacity: 0.08; }
+  82%, 100%  { opacity: 1; }
+}
+/* ── Stream: fades in once tube is tilted, fades before it returns ── */
 @keyframes lab-stream-fade {
-  0%, 14%   { opacity: 0; }
-  22%       { opacity: 1; }
-  64%       { opacity: 1; }
-  76%       { opacity: 0; }
-  100%      { opacity: 0; }
+  0%, 15%    { opacity: 0; }
+  21%        { opacity: 1; }
+  63%        { opacity: 1; }
+  73%        { opacity: 0; }
+  100%       { opacity: 0; }
 }
-@keyframes lab-drop-a {
-  0%, 18%  { transform: translateY(0px); opacity: 0; }
-  24%      { opacity: 1; }
-  55%      { transform: translateY(32px); opacity: 0; }
-  100%     { opacity: 0; }
-}
-@keyframes lab-drop-b {
-  0%, 28%  { transform: translateY(0px); opacity: 0; }
-  35%      { opacity: 1; }
-  62%      { transform: translateY(28px); opacity: 0; }
-  100%     { opacity: 0; }
-}
-@keyframes lab-drop-c {
-  0%, 40%  { transform: translateY(0px); opacity: 0; }
-  46%      { opacity: 1; }
-  70%      { transform: translateY(26px); opacity: 0; }
-  100%     { opacity: 0; }
-}
+/* ── Beaker liquid rises while pouring, fades out to reset seamlessly ── */
 @keyframes lab-beaker-fill {
-  0%, 18%  { transform: scaleY(0); }
-  78%      { transform: scaleY(1); }
-  100%     { transform: scaleY(1); }
+  0%         { transform: scaleY(0); opacity: 1; }
+  17%        { transform: scaleY(0); opacity: 1; }
+  70%        { transform: scaleY(1); opacity: 1; }
+  84%        { transform: scaleY(1); opacity: 1; }
+  95%        { transform: scaleY(1); opacity: 0; }
+  100%       { transform: scaleY(0); opacity: 0; }
+}
+/* ── Surface shimmer tracks the rising liquid level ── */
+@keyframes lab-surface-track {
+  0%, 17%    { transform: translateY(58px); opacity: 0; }
+  70%        { transform: translateY(0px);  opacity: 0.85; }
+  84%        { transform: translateY(0px);  opacity: 0.65; }
+  95%        { transform: translateY(0px);  opacity: 0; }
+  100%       { transform: translateY(58px); opacity: 0; }
+}
+/* ── Impact ripples expand from where stream hits ── */
+@keyframes lab-ripple-inner {
+  0%, 19%    { opacity: 0; transform: scale(0.3); }
+  23%        { opacity: 1; transform: scale(1); }
+  63%        { opacity: 0.9; transform: scale(1); }
+  70%        { opacity: 0; transform: scale(1.8); }
+  100%       { opacity: 0; }
+}
+@keyframes lab-ripple-outer {
+  0%, 21%    { opacity: 0; transform: scale(0.2); }
+  26%        { opacity: 0.65; transform: scale(1); }
+  63%        { opacity: 0.40; transform: scale(1); }
+  72%        { opacity: 0; transform: scale(2.2); }
+  100%       { opacity: 0; }
+}
+/* ── Tiny splash dots fly out from impact point ── */
+@keyframes lab-splash-l {
+  0%, 20%    { opacity: 0; transform: translate(0px, 0px); }
+  23%        { opacity: 0.9; }
+  60%        { opacity: 0; transform: translate(-4px, -5px); }
+  100%       { opacity: 0; }
+}
+@keyframes lab-splash-r {
+  0%, 20%    { opacity: 0; transform: translate(0px, 0px); }
+  25%        { opacity: 0.75; }
+  62%        { opacity: 0; transform: translate(4px, -4px); }
+  100%       { opacity: 0; }
+}
+/* ── Bubbles rise from bottom, shrink as they reach the surface ── */
+@keyframes lab-bubble-a {
+  0%, 22%    { transform: translateY(0px) scale(1);   opacity: 0; }
+  26%        {                                          opacity: 0.75; }
+  60%        { transform: translateY(-46px) scale(0.5); opacity: 0; }
+  100%       { opacity: 0; }
+}
+@keyframes lab-bubble-b {
+  0%, 34%    { transform: translateY(0px) scale(1);   opacity: 0; }
+  38%        {                                          opacity: 0.60; }
+  68%        { transform: translateY(-38px) scale(0.4); opacity: 0; }
+  100%       { opacity: 0; }
+}
+@keyframes lab-bubble-c {
+  0%, 44%    { transform: translateY(0px) scale(1);   opacity: 0; }
+  48%        {                                          opacity: 0.70; }
+  76%        { transform: translateY(-42px) scale(0.45); opacity: 0; }
+  100%       { opacity: 0; }
 }
 @keyframes lab-text-pulse {
-  0%, 100% { opacity: 0.45; }
+  0%, 100% { opacity: 0.40; }
   50%      { opacity: 1; }
 }
 
