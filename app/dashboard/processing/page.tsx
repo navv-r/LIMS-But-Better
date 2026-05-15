@@ -377,7 +377,7 @@ export default function ProcessingPage() {
         supabase.from("sample_procedures").upsert(
           toAdd.map(p => ({ sample_id: selected.id, procedure_name: p })),
           { onConflict: "sample_id,procedure_name" }
-        )
+        ).then(r => r)
       );
     }
     if (toRemove.length > 0) {
@@ -385,6 +385,7 @@ export default function ProcessingPage() {
         supabase.from("sample_procedures").delete()
           .eq("sample_id", selected.id)
           .in("procedure_name", toRemove)
+          .then(r => r)
       );
     }
 
